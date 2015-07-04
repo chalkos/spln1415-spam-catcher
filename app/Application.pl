@@ -1,19 +1,17 @@
 use strict;
 use utf8::all;
-use Lingua::Jspell;
+use SpamCatcher;
 
 use Data::Dumper;
 
-sub check_email {
- my $file = shift;
 
- my $in = open($in, "<", $file) or die "cannot open '$file': $!";
+my $spam = SpamCatcher->new();
 
- while (<$in>) {
+print "###########\n";
+print Dumper $spam->check_email('app/ham/00001.1a31cc283af0060967a233d26548a6ce');
 
- }
-}
+print "###########\n";
+print Dumper $spam->check_email('app/spam/00001.317e78fa8ee2f54cd4890fdc09ba8176');
 
-
-my $ham = check_email('app/ham');
-my $spam = check_email('app/spam');
+print "###########\n";
+print Dumper $spam->check_email('app/spam/00010.2558d935f6439cb40d3acb8b8569aa9b');
