@@ -46,6 +46,13 @@ sub network_learning {
   my ($self) = @_;
 
   #TODO use NaiveBayes
+  # CREATE HASH OF WORDS = SPAM / HAM
+
+  my $nb = Algorithm::NaiveBayes->new;
+
+  $nb->add_instance(attributes => $ham, label => 'ham');
+  $nb->add_instance(attributes => $spam, label => 'spam');
+
 }
 
 
@@ -75,7 +82,7 @@ sub normalize_email {
 
   $body = join('', @$body);
 
-  $body = remove_html_tags($body) if index($c_type,"text/html")==0;
+  $body = remove_html_tags($body) if index($c_type,"text/html") == 0;
 
   return $body;
 }
