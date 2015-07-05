@@ -39,20 +39,26 @@ sub check_email {
 
   my $body = normalize_email($in);
 
-  $self->{'SpamCatcher'} = $body;
+  return $body;
 }
 
 sub network_learning {
-  my ($self) = @_;
-
-  #TODO use NaiveBayes
-  # CREATE HASH OF WORDS = SPAM / HAM
+  my ($self,$body) = @_;
+  my ($ham, $spam) = ();
 
   my $nb = Algorithm::NaiveBayes->new;
+
+  #TODO use NaiveBayes
+  # CREATE HASH OF WORDS = 5§PAM / HAM
+
+  $ham = normalize_body($body);
+  print Dumper $ham;
+
 
   $nb->add_instance(attributes => $ham, label => 'ham');
   $nb->add_instance(attributes => $spam, label => 'spam');
 
+  $nb->train;
 }
 
 
@@ -86,6 +92,21 @@ sub normalize_email {
 
   return $body;
 }
+
+sub normalize_body {
+  my $body = shift;
+  my $count = ();
+
+  $body = lc($body);
+  $body =~ s/[^a-z']/ /g;
+
+  my @words = split(' ', $body);
+
+  $count->{$_}++ for(@words);
+
+  return $count;
+}
+
 
 
 1;
