@@ -19,3 +19,6 @@ nytprof.out
 *.bs
 /app/ham/*
 /app/spam/*
+cache/
+pod2htmd.tmp
+README.html

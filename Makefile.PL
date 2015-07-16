@@ -2,6 +2,30 @@ use 5.020002;
 use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
+
+sub MY::postamble {
+  return q{
+application:
+	perl -I ./lib app/Application.pl
+
+debug:
+	perl -d -I ./lib app/Application.pl
+
+alldoc: README.pod README.html
+
+cleandoc:
+	rm -f README.pod
+	rm -f README.html
+
+README.pod: lib/SpamCatcher.pm
+	podselect SpamCatcher.pm > $@
+
+README.html: lib/SpamCatcher.pm
+	cat $< | pod2html --header --outfile=$@
+
+};
+}
+
 WriteMakefile(
     NAME              => 'SpamCatcher',
     VERSION_FROM      => 'lib/SpamCatcher.pm', # finds $VERSION, requires EU::MM from perl >= 5.5

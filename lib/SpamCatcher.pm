@@ -10,7 +10,13 @@ use HTML::Strip;
 use Mail::Internet;
 use Algorithm::NaiveBayes;
 
+use File::Basename qw/basename/;
+use File::Path qw/make_path/;
+
+use Lingua::EN::StopWords qw(%StopWords);
+
 use Data::Dumper;
+#$Data::Dumper::Sortkeys = 1;
 
 require Exporter;
 
@@ -25,30 +31,29 @@ our $VERSION = '0.01';
 ## PUBLIC METHODS
 
 sub new {
-  my ($class,$files) = @_;
+  my ($class,$hamfiles,$spamfiles) = @_;
+
+  my $files = {};
+  $files->{$_} = 'ham' for(@$hamfiles);
+  $files->{$_} = 'spam' for(@$spamfiles);
+
   my $self = bless {
     # 'SpamCatcher' => {},
     # 'dict' => Lingua::Jspell->new("eng"),
     'nb' => Algorithm::NaiveBayes->new,
     'files' => $files,
   }, $class;
-  $self->network_learning();
+
+
+  #debug_normalize_file($hamfiles, './cache/ham');
+  #print "normalizado ham\n";
+  #debug_normalize_file($spamfiles, './cache/spam');
+  #print "normalizado spam\n";
+
+  $self->confidence_level();
 }
 
-sub check_email {
-  my ($self,$filename) = @_;
-
-  open(my $in, "<", $filename) or die "cannot open '$filename': $!";
-
-  my $body = normalize_email($in);
-  close($in);
-
-  print "############ $filename\n";
-
-  return $body;
-}
-
-sub network_learning {
+sub confidence_level {
   my ($self) = @_;
 
   ################
@@ -75,93 +80,123 @@ sub network_learning {
   # my ($ham, $spam) = ();
   my $count = 4;
   for (my $t = 0; $t < 5; $t++) {
+    $self->{nb} = Algorithm::NaiveBayes->new;
 
     for (my $b = 0; $b < 5; $b++) {
       if ($b != $count) {
 
         my $box = $tests[$b];
         foreach my $filename (@$box) {
-          my $body = $self->check_email($filename);
-          my $words_count = normalize_body($body);
+          my $body = file_to_normalized_string($filename);
+          my $word_frequency = word_frequency($body);
+
+          #print Dumper $filename, $word_frequency;
 
           my $type = $self->{files}{$filename};
-          if ($type=~ /ham/) {
-            $self->{nb}->add_instance(attributes => $words_count, label => 'ham');
+          if ($type eq 'ham') {
+            $self->{nb}->add_instance(attributes => $word_frequency, label => 'ham');
           } else {
-            $self->{nb}->add_instance(attributes => $words_count, label => 'spam');
+            $self->{nb}->add_instance(attributes => $word_frequency, label => 'spam');
           }
         }
-        print $count, "\n";
+        #print $b, "\n";
       }
     }
     $self->{nb}->train();
+    #print "trained\n";
 
     my $box = $tests[$count];
+    my ($guess_correct, $guess_fail) = (0,0);
     foreach my $filename (@$box) {
-      my $body = $self->check_email($filename);
-      my $words_count = normalize_body($body);
-
       my $type = $self->{files}{$filename};
-      # if ($type=~ /ham/) {
-      #   ;
-      # } else {
-      #   ;
-      # }
 
       # testa cada email
-      # obtém valores e altera confiabilidade
+      if ($self->is_spam($filename) && $self->{files}{$filename} eq 'spam') {
+        $guess_correct++;
+      } else {
+        $guess_fail++;
+      }
     }
+
+    print "Confiabilidade ($count): " . 
+        ($guess_correct/($guess_correct+$guess_fail)) . 
+        "(" . $guess_correct . " em " . ($guess_correct+$guess_fail) . ")\n";
+
     $count--;
   }
-  $self->{nb}->new();
+  $self->{nb} = Algorithm::NaiveBayes->new;
 }
 
+sub is_spam{
+  my ($self, $filename) = @_;
+
+  my $body = file_to_normalized_string($filename);
+  my $word_frequency = word_frequency($body);
+
+  my $result = $self->{nb}->predict(attributes => $word_frequency);
+
+  return ($result->{spam} > 0.5 && $result->{spam} > $result->{ham});
+}
 
 #######################
 ## PRIVATE METHODS   ##
 
-sub remove_html_tags {
-  my $text = shift;
+sub file_to_normalized_string {
+  my ($filename) = @_;
 
-  my $hs = HTML::Strip->new();
-  my $clean_text = $hs->parse( $text );
+  open(my $in, "<", $filename) or die "cannot open '$filename': $!";
 
-  return $clean_text;
-}
-
-sub normalize_email {
-  my $text = shift;
-
-  my $email = Mail::Internet->new($text);
-
+  my $email = Mail::Internet->new($in);
   $email->tidy_body();
   $email->remove_sig();
 
-  my $body = $email->body();
+  my $body_array = $email->body();
   my $c_type = $email->get('Content-Type');
 
-  $body = join('', @$body);
+  my $text = join('', @$body_array);
 
-  $body = remove_html_tags($body) if( defined($c_type) && index($c_type,"text/html") == 0);
+  if( defined($c_type) && index($c_type,"text/html") >= 0){
+    my $hs = HTML::Strip->new();
+    $text = $hs->parse( $text );
+  }
 
-  return $body;
+  close($in);
+
+  $text = lc($text);
+  $text =~ s/[^a-z']+/ /g;
+  $text =~ s/^[ \t]+//;
+  $text =~ s/[ \t]+$//;
+
+  return $text;
 }
 
-sub normalize_body {
-  my $body = shift;
-  my $count = ();
+sub word_frequency {
+  my ($text) = @_;
+  my @words = split(' ', $text);
 
-  $body = lc($body);
-  $body =~ s/[^a-z']/ /g;
+  my $count = {};
+  $count->{$_}++ for(grep { !$StopWords{$_} } @words);
 
-  my @words = split(' ', $body);
-
-  $count->{$_}++ for(@words);
+  #print Dumper \@words, $count;
 
   return $count;
 }
 
+sub debug_normalize_file{
+  my ($filenames, $output_dir) = @_;
 
+  make_path($output_dir);
+  unlink glob "$output_dir/*";
+
+  foreach my $filename (@$filenames) {
+
+    my $name = basename($filename);
+
+    open(my $out, '>', "$output_dir/$name") or die "Could not open file '$filename' $!";
+    print $out file_to_normalized_string($filename);
+    close $out;
+  }
+}
 
 1;
 __END__

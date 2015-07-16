@@ -4,15 +4,12 @@ use SpamCatcher;
 
 use Data::Dumper;
 
-my @fold_ham = glob('app/ham/*');
-my @fold_spam = glob('app/spam/*');
+my @hams = glob('app/ham/*');
+my @spams = glob('app/spam/*');
 
-my $files = ();
+my $spam = SpamCatcher->new(\@hams,\@spams);
 
-$files->{$_} = 'ham' for(@fold_ham);
-$files->{$_} = 'spam' for(@fold_spam);
 
-my $spam = SpamCatcher->new($files);
 
 
 
