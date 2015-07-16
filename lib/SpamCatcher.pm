@@ -15,6 +15,8 @@ use File::Path qw/make_path/;
 
 use Lingua::EN::StopWords qw(%StopWords);
 
+use Carp::Assert;
+
 use Data::Dumper;
 #$Data::Dumper::Sortkeys = 1;
 
@@ -30,6 +32,8 @@ our $VERSION = '0.01';
 ########################
 ## PUBLIC METHODS
 
+our %x = ();
+
 sub new {
   my ($class,$hamfiles,$spamfiles) = @_;
 
@@ -44,13 +48,24 @@ sub new {
     'files' => $files,
   }, $class;
 
+  #debug_normalize_file(['app/spam/00001.317e78fa8ee2f54cd4890fdc09ba8176'], './cache/spam');
+#
+#  #my $freqs = word_frequency(file_to_normalized_string('app/spam/00001.317e78fa8ee2f54cd4890fdc09ba8176'));
+#
+#  #print Dumper $freqs;
+#
+#  #$self->{nb}->add_instance(attributes=>$freqs, label=>'spam');
+  #print Dumper $self->{nb};
 
   #debug_normalize_file($hamfiles, './cache/ham');
   #print "normalizado ham\n";
   #debug_normalize_file($spamfiles, './cache/spam');
   #print "normalizado spam\n";
 
+  #die();
+
   $self->confidence_level();
+  #print Dumper \%x;
 }
 
 sub confidence_level {
@@ -88,38 +103,45 @@ sub confidence_level {
         my $box = $tests[$b];
         foreach my $filename (@$box) {
           my $body = file_to_normalized_string($filename);
+
+          #print Dumper $body;
+
           my $word_frequency = word_frequency($body);
 
-          #print Dumper $filename, $word_frequency;
+          #print Dumper $word_frequency;
 
           my $type = $self->{files}{$filename};
-          if ($type eq 'ham') {
-            $self->{nb}->add_instance(attributes => $word_frequency, label => 'ham');
-          } else {
-            $self->{nb}->add_instance(attributes => $word_frequency, label => 'spam');
-          }
+
+          assert($type eq 'ham' || $type eq 'spam');
+
+          $self->{nb}->add_instance(attributes => $word_frequency, label => $type);
         }
         #print $b, "\n";
       }
     }
     $self->{nb}->train();
+    #die(Dumper $self->{nb});
+    print "instances: " . $self->{nb}{instances} . "\n";
     #print "trained\n";
 
     my $box = $tests[$count];
     my ($guess_correct, $guess_fail) = (0,0);
     foreach my $filename (@$box) {
-      my $type = $self->{files}{$filename};
-
       # testa cada email
-      if ($self->is_spam($filename) && $self->{files}{$filename} eq 'spam') {
+
+      my $isSPAM = $self->is_spam($filename);
+
+      if ( $isSPAM && $self->{files}{$filename} eq 'spam') {
+        $guess_correct++;
+      } elsif(!$isSPAM && $self->{files}{$filename} eq 'ham'){
         $guess_correct++;
       } else {
         $guess_fail++;
       }
     }
 
-    print "Confiabilidade ($count): " . 
-        ($guess_correct/($guess_correct+$guess_fail)) . 
+    print "Confiabilidade ($count): " .
+        ($guess_correct/($guess_correct+$guess_fail)) .
         "(" . $guess_correct . " em " . ($guess_correct+$guess_fail) . ")\n";
 
     $count--;
@@ -146,12 +168,15 @@ sub file_to_normalized_string {
 
   open(my $in, "<", $filename) or die "cannot open '$filename': $!";
 
+  # remover cabeçalhos de email
   my $email = Mail::Internet->new($in);
   $email->tidy_body();
   $email->remove_sig();
 
   my $body_array = $email->body();
   my $c_type = $email->get('Content-Type');
+
+  $x{$c_type}++ if(defined($c_type));
 
   my $text = join('', @$body_array);
 
@@ -164,8 +189,11 @@ sub file_to_normalized_string {
 
   $text = lc($text);
   $text =~ s/[^a-z']+/ /g;
-  $text =~ s/^[ \t]+//;
-  $text =~ s/[ \t]+$//;
+  $text =~ s/^[ \t\n]+//;
+  $text =~ s/[ \t\n]+$//;
+
+  my @words = split ' ', $text;
+  $text = join ' ', grep { !$StopWords{$_} } @words;
 
   return $text;
 }
@@ -175,7 +203,7 @@ sub word_frequency {
   my @words = split(' ', $text);
 
   my $count = {};
-  $count->{$_}++ for(grep { !$StopWords{$_} } @words);
+  $count->{$_}++ for(@words);
 
   #print Dumper \@words, $count;
 
