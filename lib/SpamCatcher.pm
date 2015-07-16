@@ -3,7 +3,7 @@ package SpamCatcher;
 use 5.020002;
 use strict;
 use warnings;
-use utf8::all;
+use utf8;
 
 use Lingua::Jspell;
 use HTML::Strip;
@@ -25,11 +25,14 @@ our $VERSION = '0.01';
 ## PUBLIC METHODS
 
 sub new {
-  my $class = shift;
+  my ($class,$files) = @_;
   my $self = bless {
-    'SpamCatcher' => {},
-    'dict' => Lingua::Jspell->new("eng"),
-    }, $class;
+    # 'SpamCatcher' => {},
+    # 'dict' => Lingua::Jspell->new("eng"),
+    'nb' => Algorithm::NaiveBayes->new,
+    'files' => $files,
+  }, $class;
+  $self->network_learning();
 }
 
 sub check_email {
@@ -38,39 +41,90 @@ sub check_email {
   open(my $in, "<", $filename) or die "cannot open '$filename': $!";
 
   my $body = normalize_email($in);
+  close($in);
+
+  print "############ $filename\n";
 
   return $body;
 }
 
 sub network_learning {
-  my ($self,$body) = @_;
-  my ($ham, $spam) = ();
+  my ($self) = @_;
 
-  my $nb = Algorithm::NaiveBayes->new;
+  ################
+  # Ciclo para criar box para emails
+  my $files_per_box = int(0.20 * keys( %{$self->{files}} ));
 
-  #TODO use NaiveBayes
-  # CREATE HASH OF WORDS = 5§PAM / HAM
+  my @tests = ();
+  my $i = 0;
+  my $box = [];
+  foreach my $key (keys( %{$self->{files}} )) {
+    if($i == $files_per_box) {
+      push @tests, $box;
 
-  $ham = normalize_body($body);
-  print Dumper $ham;
+      $i=0;
+      $box = [];
+    }
+    push(@$box, $key);
 
+    $i++;
+  }
 
-  $nb->add_instance(attributes => $ham, label => 'ham');
-  $nb->add_instance(attributes => $spam, label => 'spam');
+  ################
+  # Ciclo de teste
+  # my ($ham, $spam) = ();
+  my $count = 4;
+  for (my $t = 0; $t < 5; $t++) {
 
-  $nb->train;
+    for (my $b = 0; $b < 5; $b++) {
+      if ($b != $count) {
+
+        my $box = $tests[$b];
+        foreach my $filename (@$box) {
+          my $body = $self->check_email($filename);
+          my $words_count = normalize_body($body);
+
+          my $type = $self->{files}{$filename};
+          if ($type=~ /ham/) {
+            $self->{nb}->add_instance(attributes => $words_count, label => 'ham');
+          } else {
+            $self->{nb}->add_instance(attributes => $words_count, label => 'spam');
+          }
+        }
+        print $count, "\n";
+      }
+    }
+    $self->{nb}->train();
+
+    my $box = $tests[$count];
+    foreach my $filename (@$box) {
+      my $body = $self->check_email($filename);
+      my $words_count = normalize_body($body);
+
+      my $type = $self->{files}{$filename};
+      # if ($type=~ /ham/) {
+      #   ;
+      # } else {
+      #   ;
+      # }
+
+      # testa cada email
+      # obtém valores e altera confiabilidade
+    }
+    $count--;
+  }
+  $self->{nb}->new();
 }
 
 
 #######################
-## PRIVATE METHODS
+## PRIVATE METHODS   ##
 
 sub remove_html_tags {
   my $text = shift;
 
   my $hs = HTML::Strip->new();
   my $clean_text = $hs->parse( $text );
-  $hs->eof;
 
   return $clean_text;
 }
@@ -88,7 +142,7 @@ sub normalize_email {
 
   $body = join('', @$body);
 
-  $body = remove_html_tags($body) if index($c_type,"text/html") == 0;
+  $body = remove_html_tags($body) if( defined($c_type) && index($c_type,"text/html") == 0);
 
   return $body;
 }
