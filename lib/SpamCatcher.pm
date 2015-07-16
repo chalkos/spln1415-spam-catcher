@@ -32,8 +32,6 @@ our $VERSION = '0.01';
 ########################
 ## PUBLIC METHODS
 
-our %x = ();
-
 sub new {
   my ($class,$hamfiles,$spamfiles) = @_;
 
@@ -176,10 +174,12 @@ sub file_to_normalized_string {
   my $body_array = $email->body();
   my $c_type = $email->get('Content-Type');
 
-  $x{$c_type}++ if(defined($c_type));
-
   my $text = join('', @$body_array);
 
+  # remover PGP signatures
+  #$text =~ s/--==_Exmh_-.*?--==_Exmh_.*?\n//mg;
+
+  # remover tags HTML
   if( defined($c_type) && index($c_type,"text/html") >= 0){
     my $hs = HTML::Strip->new();
     $text = $hs->parse( $text );
@@ -187,13 +187,20 @@ sub file_to_normalized_string {
 
   close($in);
 
+  # meter tudo em letras minusculas
   $text = lc($text);
+
+  #remover ainda mais tags HTML (mesmo quando o contenttype nao é html)
+  $text =~ s/<(\w+(\b.*?)|\/\w+)>//g;
+
+  # apenas permitir letras e plicas
   $text =~ s/[^a-z']+/ /g;
   $text =~ s/^[ \t\n]+//;
   $text =~ s/[ \t\n]+$//;
 
+  # remover stopwords
   my @words = split ' ', $text;
-  $text = join ' ', grep { !$StopWords{$_} } @words;
+  $text = join ' ', grep { !$StopWords{$_} && (length $_ > 2)} @words;
 
   return $text;
 }
