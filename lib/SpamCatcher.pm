@@ -5,7 +5,6 @@ use strict;
 use warnings;
 use utf8;
 
-use Lingua::Jspell;
 use HTML::Strip;
 use Mail::Internet;
 use Algorithm::NaiveBayes;
@@ -15,17 +14,13 @@ use File::Path qw/make_path/;
 
 use Lingua::EN::StopWords qw(%StopWords);
 
-use Carp::Assert;
-
 use Data::Dumper;
-#$Data::Dumper::Sortkeys = 1;
 
 require Exporter;
 
 our @ISA = qw(Exporter);
 
-# o que se pode importar individualmente
-#our @EXPORT_OK = qw( );
+our @EXPORT_OK = qw(file_to_normalized_string word_frequency);
 
 our $VERSION = '0.01';
 
@@ -42,8 +37,6 @@ sub new {
   $files->{$_} = 'spam' for(@$spamfiles);
 
   my $self = bless {
-    # 'SpamCatcher' => {},
-    # 'dict' => Lingua::Jspell->new("eng"),
     'nb' => Algorithm::NaiveBayes->new,
     'files' => $files,
   }, $class;
@@ -123,16 +116,8 @@ sub confidence_level {
         my $box = $tests[$b];
         foreach my $filename (@$box) {
           my $body = file_to_normalized_string($filename);
-
-          #print Dumper $body;
-
           my $word_frequency = word_frequency($body);
-
-          #print Dumper $word_frequency;
-
           my $type = $self->{files}{$filename};
-
-          assert($type eq 'ham' || $type eq 'spam');
 
           $self->{nb}->add_instance(attributes => $word_frequency, label => $type);
         }

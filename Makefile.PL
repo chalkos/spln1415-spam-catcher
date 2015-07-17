@@ -26,10 +26,18 @@ README.html: lib/SpamCatcher.pm
 };
 }
 
+
+
 WriteMakefile(
     NAME              => 'SpamCatcher',
     VERSION_FROM      => 'lib/SpamCatcher.pm', # finds $VERSION, requires EU::MM from perl >= 5.5
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
+    PREREQ_PM         => {
+    	'Lingua::EN::StopWords' => 0,
+    	'Lingua::Stem' => 0,
+    	'Algorithm::NaiveBayes' => 0,
+    	'HTML::Strip' => 0,
+    	'Mail::Internet' => 0
+    	}, # e.g., Module::Name => 1.1
     ABSTRACT_FROM     => 'lib/SpamCatcher.pm', # retrieve abstract from module
     AUTHOR            => 'A. U. Thor <chalkos@nonet>',
     #LICENSE           => 'perl',
