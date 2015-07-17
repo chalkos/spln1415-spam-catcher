@@ -18,7 +18,7 @@ cleandoc:
 	rm -f README.html
 
 README.pod: lib/SpamCatcher.pm
-	podselect SpamCatcher.pm > $@
+	podselect $< > $@
 
 README.html: lib/SpamCatcher.pm
 	cat $< | pod2html --header --outfile=$@

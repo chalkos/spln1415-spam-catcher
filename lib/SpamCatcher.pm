@@ -24,8 +24,8 @@ our @EXPORT_OK = qw(file_to_normalized_string word_frequency);
 
 our $VERSION = '0.01';
 
-########################
-## PUBLIC METHODS
+############################
+##   PUBLIC SUBROUTINES   ##
 
 sub new {
   my ($class,$hamfiles,$spamfiles,$kfold) = @_;
@@ -162,8 +162,8 @@ sub is_spam{
   return ($result->{spam} > 0.5 && $result->{spam} > $result->{ham});
 }
 
-#######################
-## PRIVATE METHODS   ##
+###########################
+##   CLASS SUBROUTINES   ##
 
 sub file_to_normalized_string {
   my ($filename) = @_;
@@ -220,6 +220,9 @@ sub word_frequency {
   return $count;
 }
 
+#############################
+##   PRIVATE SUBROUTINES   ##
+
 sub debug_normalize_file{
   my ($filenames, $output_dir) = @_;
 
@@ -238,53 +241,188 @@ sub debug_normalize_file{
 
 1;
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
-=head1 NAME
+=encoding utf8
 
-SpamCatcher - Perl extension for blah blah blah
+=head1 Nome
 
-=head1 SYNOPSIS
+SpamCatcher - Identificador de emails de SPAM
+
+=head1 SINOPSE
 
   use SpamCatcher;
-  blah blah blah
 
-=head1 DESCRIPTION
+  my @hams = glob('app/ham/*');
+  my @spams = glob('app/spam/*');
 
-Stub documentation for SpamCatcher, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+  my $spam;
 
-Blah blah blah.
+  # Inicializar e registar os ficheiros passados como argumento
+  $spam = SpamCatcher->new(\@hams,\@spams);
+
+  # OU
+
+  # Inicializar, mostrar grau de confiança e registar os ficheiros passados como argumento
+  #$spam = SpamCatcher->new(\@hams,\@spams, 1);
+
+  # teria como output algo semelhante a:
+  # Confiabilidade (4): 0.977551020408163 (1916 em 1960)
+  # Confiabilidade (3): 0.98265306122449 (1926 em 1960)
+  # Confiabilidade (2): 0.977040816326531 (1915 em 1960)
+  # Confiabilidade (1): 0.976020408163265 (1913 em 1960)
+  # Confiabilidade (0): 0.971938775510204 (1905 em 1960)
+
+  # Construir a base de dados com os ficheiros passados ao inicializador
+  $spam->learn_dataset();
+
+  # Verificar se um email é SPAM
+  if($spam->is_spam('app/ham/00027.c9e76a75d21f9221d65d4d577a2cfb75')){
+    print "is spam\n"
+  }else{
+    print "is not spam\n"
+  }
+
+
+=head1 DESCRIÇÃO
+
+O Spam Catcher permite identificar se um email é SPAM.
+
+O módulo necessita que lhe sejam fornecidos vários emails previamente reconhecidos como SPAM ou HAM (não-SPAM). Esses emails são usados para conseguir prever se um email é SPAM.
+
+Ao observar a taxa de sucesso do módulo usando o algoritmo K-Fold, o módulo reconheceu emails de HAM e SPAM com uma taxa de sucesso superior a 97%.
+
+
+
+=head1 SUBROTINAS
 
 =head2 EXPORT
 
-None by default.
+Nada é exportado de forma implícita/predefinida.
+
+=head2 EXPORT_OK
+
+=head3 file_to_normalized_string
+
+Recebe como argumento um nome de ficheiro.
+
+Abre o ficheiro cujo nome foi passado como argumento, normaliza o seu conteúdo e devolve-o na forma de uma string.
+
+=head3 word_frequency
+
+Recebe um texto (string) como argumento. Este texto deve ter sido previamente normalizado usando L<file_to_normalized_string|/"file_to_normalized_string">.
+
+Devolve uma hash cujas chaves são as palavras encontradas no texto e os valores são as correspondentes frequências absolutas.
+
+=head3 debug_normalize_file
+
+Recebe uma referência para um array com nomes de ficheiro e uma directoria (string) (sem C</> no fim).
+
+Cria uma versão normalizada do ficheiro original, com o mesmo nome, na directoria indicada.
+
+=head2 SUBROTINAS DE INSTÂNCIA
+
+=head3 new
+
+Recebe como argumentos:
+
+=over
+
+=item 1. Referêcia para uma lista com os nomes de ficheiro dos emails pre-identificados como HAM;
+
+=item 2. Referêcia para uma lista com os nomes de ficheiro dos emails pre-identificados como SPAM;
+
+=item 3. (opcional, falso por predefinição) Valor de verdade que indica se deve ser executada a subrotina de verificação do grau de confiança do C<SpamCatcher>.
+
+=back
+
+Cria uma nova instância de C<SpamCatcher> que usará os ficheiros designados para I<aprender> a identificar emails.
+
+Caso o terceiro argumento tenha um valor verdadeiro, é executada a subrotina de verificação do grau de confiança do C<SpamCatcher>.
+
+=head3 learn_dataset
+
+Recebe um argumento (opcional e falso por predefinição) que indica se o ficheiro temporário do Naive Bayes deverá ser ignorado.
+
+Se o ficheiro temporário existir e puder ser usado, é carregado esse ficheiro, ficando a instância rapidamente pronta a reconhecer emails.
+
+Se o ficheiro temporário não existir ou não puder ser usado, todos os ficheiros são normalizados e as suas frequências absolutas adicionadas à instância de C<Algorithm::NaiveBayes>. Depois disso as frequências são preparadas para serem utilizadas na classificação de emails. Por fim o estado do C<Algorithm::NaiveBayes> é guardado num ficheiro temporário para poder ser directamente recuperado e acelerar as próximas execuções desta subrotina.
+
+=head3 confidence_level
+
+Não recebe argumentos.
+
+Executa o método K-Fold com 5 blocos (a distribuição dos emails pelos blocos é aleatória para instâncias diferentes de C<SpamCatcher>):
+
+=over
+
+=item 1. Aprende a identificar emails usando os blocos 1 a 4 e verifica a percentagem de emails do 5.º bloco que classificou com sucesso.
+
+=item 2. Aprende a identificar emails usando os blocos 1, 2, 3 e 5 e verifica a percentagem de emails do 4.º bloco que classificou com sucesso.
+
+=item 3. Aprende a identificar emails usando os blocos 1, 2, 4 e 5 e verifica a percentagem de emails do 3.º bloco que classificou com sucesso.
+
+=item 4. Aprende a identificar emails usando os blocos 1, 3, 4 e 5 e verifica a percentagem de emails do 2.º bloco que classificou com sucesso.
+
+=item 5. Aprende a identificar emails usando os blocos 2, 3, 4 e 5 e verifica a percentagem de emails do 1.º bloco que classificou com sucesso.
+
+=back
+
+A informação sobre confiança é mostrada no ecrã.
+
+A subrotina devolve C<undef>.
+
+=head3 is_spam
+
+Recebe como argumento um nome de ficheiro.
+
+Computa as frequências absolutas das palavras contidas no ficheiro cujo nome foi passado como argumento, questiona a instância de C<Algorithm::NaiveBayes> sobre a probabilidade de o email ser de SPAM.
+
+Um email é de SPAM quando o C<Algorithm::NaiveBayes> devolve uma probabilidade de ser SPAM de mais de 50% e o valor da probabilidade de ser SPAM é maior que o valor da probabilidade de ser HAM.
 
 
+=head1 REGRAS DA MAKEFILE
 
-=head1 SEE ALSO
+Existem algumas regras adicionais na makefile do projecto:
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
+=over
 
-If you have a mailing list set up for your module, mention it here.
+=item * C<application>: executa a aplicação de exemplo (é necessário extrair o tar.bz2 com os datasets)
 
-If you have a web site set up for your module, mention it here.
+=item * C<alldoc>: gera o ficheiro README.pod e uma versão do relatório perldoc em HTML (com índice)
 
-=head1 AUTHOR
+=item * C<cleandoc>: remove os ficheiros gerados pela regra htmlreport
 
-A. U. Thor, E<lt>chalkos@nonetE<gt>
+=back
+
+=head1 DEPENDÊNCIAS EXTERNAS
+
+=over
+
+=item * C<Lingua::Jspell> com o dicionário Português ("port") instalado;
+
+=item * C<Text::RewriteRules>.
+
+=item * C<Lingua::EN::StopWords> tem palavras que não contribuem para decisão entre HAM e SPAM;
+
+=item * C<Lingua::Stem> é uma dependência do C<Lingua::EN::StopWords>;
+
+=item * C<Algorithm::NaiveBayes> implementa o algoritmo Naive Bayes, permite inserir as frequências absolutas das palavras e obter valores de previsão para classificar emails;
+
+=item * C<HTML::Strip> Remove tags HTML dos emails;
+
+=item * C<Mail::Internet> Remove cabeçalhos dos emails.
+
+=back
+
+=head1 AUTORES
+
+  B. Ferreira E<lt>chalkos@chalkos.netE<gt>
+  M. Pinto E<lt>mcpinto98@gmail.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2015 by A. U. Thor
+Copyright (C) 2015 by B. Ferreira and M. Pinto
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.20.2 or,
-at your option, any later version of Perl 5 you may have available.
-
+This program is free software; licensed under GPL.
 
 =cut

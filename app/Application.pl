@@ -7,8 +7,8 @@ use Data::Dumper;
 my @hams = glob('app/ham/*');
 my @spams = glob('app/spam/*');
 
-#my $spam = SpamCatcher->new(\@hams,\@spams, 1);
-my $spam = SpamCatcher->new(\@hams,\@spams);
+my $spam = SpamCatcher->new(\@hams,\@spams, 1);
+#my $spam = SpamCatcher->new(\@hams,\@spams);
 
 $spam->learn_dataset();
 

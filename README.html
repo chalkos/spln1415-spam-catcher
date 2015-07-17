@@ -17,54 +17,237 @@
 
 
 <ul id="index">
-  <li><a href="#NAME">NAME</a></li>
-  <li><a href="#SYNOPSIS">SYNOPSIS</a></li>
-  <li><a href="#DESCRIPTION">DESCRIPTION</a>
+  <li><a href="#Nome">Nome</a></li>
+  <li><a href="#SINOPSE">SINOPSE</a></li>
+  <li><a href="#DESCRIO">DESCRI&Ccedil;&Atilde;O</a></li>
+  <li><a href="#SUBROTINAS">SUBROTINAS</a>
     <ul>
       <li><a href="#EXPORT">EXPORT</a></li>
+      <li><a href="#EXPORT_OK">EXPORT_OK</a>
+        <ul>
+          <li><a href="#file_to_normalized_string">file_to_normalized_string</a></li>
+          <li><a href="#word_frequency">word_frequency</a></li>
+          <li><a href="#debug_normalize_file">debug_normalize_file</a></li>
+        </ul>
+      </li>
+      <li><a href="#SUBROTINAS-DE-INSTNCIA">SUBROTINAS DE INST&Acirc;NCIA</a>
+        <ul>
+          <li><a href="#new">new</a></li>
+          <li><a href="#learn_dataset">learn_dataset</a></li>
+          <li><a href="#confidence_level">confidence_level</a></li>
+          <li><a href="#is_spam">is_spam</a></li>
+        </ul>
+      </li>
     </ul>
   </li>
-  <li><a href="#SEE-ALSO">SEE ALSO</a></li>
-  <li><a href="#AUTHOR">AUTHOR</a></li>
+  <li><a href="#REGRAS-DA-MAKEFILE">REGRAS DA MAKEFILE</a></li>
+  <li><a href="#DEPENDNCIAS-EXTERNAS">DEPEND&Ecirc;NCIAS EXTERNAS</a></li>
+  <li><a href="#AUTORES">AUTORES</a></li>
   <li><a href="#COPYRIGHT-AND-LICENSE">COPYRIGHT AND LICENSE</a></li>
 </ul>
 
-<h1 id="NAME">NAME</h1>
+<h1 id="Nome">Nome</h1>
 
-<p>SpamCatcher - Perl extension for blah blah blah</p>
+<p>SpamCatcher - Identificador de emails de SPAM</p>
 
-<h1 id="SYNOPSIS">SYNOPSIS</h1>
+<h1 id="SINOPSE">SINOPSE</h1>
 
 <pre><code>  use SpamCatcher;
-  blah blah blah</code></pre>
 
-<h1 id="DESCRIPTION">DESCRIPTION</h1>
+  my @hams = glob(&#39;app/ham/*&#39;);
+  my @spams = glob(&#39;app/spam/*&#39;);
 
-<p>Stub documentation for SpamCatcher, created by h2xs. It looks like the author of the extension was negligent enough to leave the stub unedited.</p>
+  my $spam;
 
-<p>Blah blah blah.</p>
+  # Inicializar e registar os ficheiros passados como argumento
+  $spam = SpamCatcher-&gt;new(\@hams,\@spams);
+
+  # OU
+
+  # Inicializar, mostrar grau de confian&ccedil;a e registar os ficheiros passados como argumento
+  #$spam = SpamCatcher-&gt;new(\@hams,\@spams, 1);
+
+  # teria como output algo semelhante a:
+  # Confiabilidade (4): 0.977551020408163 (1916 em 1960)
+  # Confiabilidade (3): 0.98265306122449 (1926 em 1960)
+  # Confiabilidade (2): 0.977040816326531 (1915 em 1960)
+  # Confiabilidade (1): 0.976020408163265 (1913 em 1960)
+  # Confiabilidade (0): 0.971938775510204 (1905 em 1960)
+
+  # Construir a base de dados com os ficheiros passados ao inicializador
+  $spam-&gt;learn_dataset();
+
+  # Verificar se um email &eacute; SPAM
+  if($spam-&gt;is_spam(&#39;app/ham/00027.c9e76a75d21f9221d65d4d577a2cfb75&#39;)){
+    print &quot;is spam\n&quot;
+  }else{
+    print &quot;is not spam\n&quot;
+  }</code></pre>
+
+<h1 id="DESCRIO">DESCRI&Ccedil;&Atilde;O</h1>
+
+<p>O Spam Catcher permite identificar se um email &eacute; SPAM.</p>
+
+<p>O m&oacute;dulo necessita que lhe sejam fornecidos v&aacute;rios emails previamente reconhecidos como SPAM ou HAM (n&atilde;o-SPAM). Esses emails s&atilde;o usados para conseguir prever se um email &eacute; SPAM.</p>
+
+<p>Ao observar a taxa de sucesso do m&oacute;dulo usando o algoritmo K-Fold, o m&oacute;dulo reconheceu emails de HAM e SPAM com uma taxa de sucesso superior a 97%.</p>
+
+<h1 id="SUBROTINAS">SUBROTINAS</h1>
 
 <h2 id="EXPORT">EXPORT</h2>
 
-<p>None by default.</p>
+<p>Nada &eacute; exportado de forma impl&iacute;cita/predefinida.</p>
 
-<h1 id="SEE-ALSO">SEE ALSO</h1>
+<h2 id="EXPORT_OK">EXPORT_OK</h2>
 
-<p>Mention other useful documentation such as the documentation of related modules or operating system documentation (such as man pages in UNIX), or any relevant external documentation such as RFCs or standards.</p>
+<h3 id="file_to_normalized_string">file_to_normalized_string</h3>
 
-<p>If you have a mailing list set up for your module, mention it here.</p>
+<p>Recebe como argumento um nome de ficheiro.</p>
 
-<p>If you have a web site set up for your module, mention it here.</p>
+<p>Abre o ficheiro cujo nome foi passado como argumento, normaliza o seu conte&uacute;do e devolve-o na forma de uma string.</p>
 
-<h1 id="AUTHOR">AUTHOR</h1>
+<h3 id="word_frequency">word_frequency</h3>
 
-<p>A. U. Thor, &lt;chalkos@nonet&gt;</p>
+<p>Recebe um texto (string) como argumento. Este texto deve ter sido previamente normalizado usando <a href="#file_to_normalized_string">file_to_normalized_string</a>.</p>
+
+<p>Devolve uma hash cujas chaves s&atilde;o as palavras encontradas no texto e os valores s&atilde;o as correspondentes frequ&ecirc;ncias absolutas.</p>
+
+<h3 id="debug_normalize_file">debug_normalize_file</h3>
+
+<p>Recebe uma refer&ecirc;ncia para um array com nomes de ficheiro e uma directoria (string) (sem <code>/</code> no fim).</p>
+
+<p>Cria uma vers&atilde;o normalizada do ficheiro original, com o mesmo nome, na directoria indicada.</p>
+
+<h2 id="SUBROTINAS-DE-INSTNCIA">SUBROTINAS DE INST&Acirc;NCIA</h2>
+
+<h3 id="new">new</h3>
+
+<p>Recebe como argumentos:</p>
+
+<dl>
+
+<dt id="Refercia-para-uma-lista-com-os-nomes-de-ficheiro-dos-emails-pre-identificados-como-HAM">1. Refer&ecirc;cia para uma lista com os nomes de ficheiro dos emails pre-identificados como HAM;</dt>
+<dd>
+
+</dd>
+<dt id="Refercia-para-uma-lista-com-os-nomes-de-ficheiro-dos-emails-pre-identificados-como-SPAM">2. Refer&ecirc;cia para uma lista com os nomes de ficheiro dos emails pre-identificados como SPAM;</dt>
+<dd>
+
+</dd>
+<dt id="opcional-falso-por-predefinio-Valor-de-verdade-que-indica-se-deve-ser-executada-a-subrotina-de-verificao-do-grau-de-confiana-do-SpamCatcher">3. (opcional, falso por predefini&ccedil;&atilde;o) Valor de verdade que indica se deve ser executada a subrotina de verifica&ccedil;&atilde;o do grau de confian&ccedil;a do <code>SpamCatcher</code>.</dt>
+<dd>
+
+</dd>
+</dl>
+
+<p>Cria uma nova inst&acirc;ncia de <code>SpamCatcher</code> que usar&aacute; os ficheiros designados para <i>aprender</i> a identificar emails.</p>
+
+<p>Caso o terceiro argumento tenha um valor verdadeiro, &eacute; executada a subrotina de verifica&ccedil;&atilde;o do grau de confian&ccedil;a do <code>SpamCatcher</code>.</p>
+
+<h3 id="learn_dataset">learn_dataset</h3>
+
+<p>Recebe um argumento (opcional e falso por predefini&ccedil;&atilde;o) que indica se o ficheiro tempor&aacute;rio do Naive Bayes dever&aacute; ser ignorado.</p>
+
+<p>Se o ficheiro tempor&aacute;rio existir e puder ser usado, &eacute; carregado esse ficheiro, ficando a inst&acirc;ncia rapidamente pronta a reconhecer emails.</p>
+
+<p>Se o ficheiro tempor&aacute;rio n&atilde;o existir ou n&atilde;o puder ser usado, todos os ficheiros s&atilde;o normalizados e as suas frequ&ecirc;ncias absolutas adicionadas &agrave; inst&acirc;ncia de <code>Algorithm::NaiveBayes</code>. Depois disso as frequ&ecirc;ncias s&atilde;o preparadas para serem utilizadas na classifica&ccedil;&atilde;o de emails. Por fim o estado do <code>Algorithm::NaiveBayes</code> &eacute; guardado num ficheiro tempor&aacute;rio para poder ser directamente recuperado e acelerar as pr&oacute;ximas execu&ccedil;&otilde;es desta subrotina.</p>
+
+<h3 id="confidence_level">confidence_level</h3>
+
+<p>N&atilde;o recebe argumentos.</p>
+
+<p>Executa o m&eacute;todo K-Fold com 5 blocos (a distribui&ccedil;&atilde;o dos emails pelos blocos &eacute; aleat&oacute;ria para inst&acirc;ncias diferentes de <code>SpamCatcher</code>):</p>
+
+<dl>
+
+<dt id="Aprende-a-identificar-emails-usando-os-blocos-1-a-4-e-verifica-a-percentagem-de-emails-do-5.-bloco-que-classificou-com-sucesso">1. Aprende a identificar emails usando os blocos 1 a 4 e verifica a percentagem de emails do 5.&ordm; bloco que classificou com sucesso.</dt>
+<dd>
+
+</dd>
+<dt id="Aprende-a-identificar-emails-usando-os-blocos-1-2-3-e-5-e-verifica-a-percentagem-de-emails-do-4.-bloco-que-classificou-com-sucesso">2. Aprende a identificar emails usando os blocos 1, 2, 3 e 5 e verifica a percentagem de emails do 4.&ordm; bloco que classificou com sucesso.</dt>
+<dd>
+
+</dd>
+<dt id="Aprende-a-identificar-emails-usando-os-blocos-1-2-4-e-5-e-verifica-a-percentagem-de-emails-do-3.-bloco-que-classificou-com-sucesso">3. Aprende a identificar emails usando os blocos 1, 2, 4 e 5 e verifica a percentagem de emails do 3.&ordm; bloco que classificou com sucesso.</dt>
+<dd>
+
+</dd>
+<dt id="Aprende-a-identificar-emails-usando-os-blocos-1-3-4-e-5-e-verifica-a-percentagem-de-emails-do-2.-bloco-que-classificou-com-sucesso">4. Aprende a identificar emails usando os blocos 1, 3, 4 e 5 e verifica a percentagem de emails do 2.&ordm; bloco que classificou com sucesso.</dt>
+<dd>
+
+</dd>
+<dt id="Aprende-a-identificar-emails-usando-os-blocos-2-3-4-e-5-e-verifica-a-percentagem-de-emails-do-1.-bloco-que-classificou-com-sucesso">5. Aprende a identificar emails usando os blocos 2, 3, 4 e 5 e verifica a percentagem de emails do 1.&ordm; bloco que classificou com sucesso.</dt>
+<dd>
+
+</dd>
+</dl>
+
+<p>A informa&ccedil;&atilde;o sobre confian&ccedil;a &eacute; mostrada no ecr&atilde;.</p>
+
+<p>A subrotina devolve <code>undef</code>.</p>
+
+<h3 id="is_spam">is_spam</h3>
+
+<p>Recebe como argumento um nome de ficheiro.</p>
+
+<p>Computa as frequ&ecirc;ncias absolutas das palavras contidas no ficheiro cujo nome foi passado como argumento, questiona a inst&acirc;ncia de <code>Algorithm::NaiveBayes</code> sobre a probabilidade de o email ser de SPAM.</p>
+
+<p>Um email &eacute; de SPAM quando o <code>Algorithm::NaiveBayes</code> devolve uma probabilidade de ser SPAM de mais de 50% e o valor da probabilidade de ser SPAM &eacute; maior que o valor da probabilidade de ser HAM.</p>
+
+<h1 id="REGRAS-DA-MAKEFILE">REGRAS DA MAKEFILE</h1>
+
+<p>Existem algumas regras adicionais na makefile do projecto:</p>
+
+<ul>
+
+<li><p><code>application</code>: executa a aplica&ccedil;&atilde;o de exemplo (&eacute; necess&aacute;rio extrair o tar.bz2 com os datasets)</p>
+
+</li>
+<li><p><code>alldoc</code>: gera o ficheiro README.pod e uma vers&atilde;o do relat&oacute;rio perldoc em HTML (com &iacute;ndice)</p>
+
+</li>
+<li><p><code>cleandoc</code>: remove os ficheiros gerados pela regra htmlreport</p>
+
+</li>
+</ul>
+
+<h1 id="DEPENDNCIAS-EXTERNAS">DEPEND&Ecirc;NCIAS EXTERNAS</h1>
+
+<ul>
+
+<li><p><code>Lingua::Jspell</code> com o dicion&aacute;rio Portugu&ecirc;s (&quot;port&quot;) instalado;</p>
+
+</li>
+<li><p><code>Text::RewriteRules</code>.</p>
+
+</li>
+<li><p><code>Lingua::EN::StopWords</code> tem palavras que n&atilde;o contribuem para decis&atilde;o entre HAM e SPAM;</p>
+
+</li>
+<li><p><code>Lingua::Stem</code> &eacute; uma depend&ecirc;ncia do <code>Lingua::EN::StopWords</code>;</p>
+
+</li>
+<li><p><code>Algorithm::NaiveBayes</code> implementa o algoritmo Naive Bayes, permite inserir as frequ&ecirc;ncias absolutas das palavras e obter valores de previs&atilde;o para classificar emails;</p>
+
+</li>
+<li><p><code>HTML::Strip</code> Remove tags HTML dos emails;</p>
+
+</li>
+<li><p><code>Mail::Internet</code> Remove cabe&ccedil;alhos dos emails.</p>
+
+</li>
+</ul>
+
+<h1 id="AUTORES">AUTORES</h1>
+
+<pre><code>  B. Ferreira E&lt;lt&gt;chalkos@chalkos.netE&lt;gt&gt;
+  M. Pinto E&lt;lt&gt;mcpinto98@gmail.comE&lt;gt&gt;</code></pre>
 
 <h1 id="COPYRIGHT-AND-LICENSE">COPYRIGHT AND LICENSE</h1>
 
-<p>Copyright (C) 2015 by A. U. Thor</p>
+<p>Copyright (C) 2015 by B. Ferreira and M. Pinto</p>
 
-<p>This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself, either Perl version 5.20.2 or, at your option, any later version of Perl 5 you may have available.</p>
+<p>This program is free software; licensed under GPL.</p>
 
 <table border="0" width="100%" cellspacing="0" cellpadding="3">
 <tr><td class="_podblock_" style="background-color: #cccccc; color: #000" valign="middle">

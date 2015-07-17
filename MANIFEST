@@ -6,4 +6,4 @@ README.html
 t/SpamCatcher.t
 lib/SpamCatcher.pm
 app/Application.pl
-spam_corpus.tar.bz2
+app/spam_corpus.tar.bz2
