@@ -8,11 +8,24 @@
 use strict;
 use warnings;
 
-use Test::More tests => 1;
+use Test::More;
+
 BEGIN { use_ok('SpamCatcher') };
 
-#########################
+# verificar se os métodos principais estão definidos
+can_ok('SpamCatcher', qw(new learn_dataset confidence_level is_spam file_to_normalized_string word_frequency));
 
-# Insert your test code below, the Test::More module is use()ed here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
+isa_ok( SpamCatcher->new([],[]), 'SpamCatcher' );
+isa_ok( SpamCatcher->new([],[],0), 'SpamCatcher' );
 
+
+### Testa frequência de palavras
+my $got = SpamCatcher::word_frequency("arroz de pato pato ontem");
+my $expected = { 'arroz' => 1, 'de' => 1, 'pato' => 2, 'ontem' => 1, };
+is_deeply($got, $expected, ' frequencia de palavras ');
+
+$got = SpamCatcher::word_frequency();
+$expected = {};
+is_deeply($got, $expected, ' frequencia de palavras ');
+
+done_testing();
