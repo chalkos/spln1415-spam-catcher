@@ -33,7 +33,9 @@ our $VERSION = '0.01';
 ## PUBLIC METHODS
 
 sub new {
-  my ($class,$hamfiles,$spamfiles) = @_;
+  my ($class,$hamfiles,$spamfiles,$kfold) = @_;
+
+  $kfold = 0 if(!defined $kfold);
 
   my $files = {};
   $files->{$_} = 'ham' for(@$hamfiles);
@@ -46,24 +48,41 @@ sub new {
     'files' => $files,
   }, $class;
 
-  #debug_normalize_file(['app/spam/00001.317e78fa8ee2f54cd4890fdc09ba8176'], './cache/spam');
-#
-#  #my $freqs = word_frequency(file_to_normalized_string('app/spam/00001.317e78fa8ee2f54cd4890fdc09ba8176'));
-#
-#  #print Dumper $freqs;
-#
-#  #$self->{nb}->add_instance(attributes=>$freqs, label=>'spam');
-  #print Dumper $self->{nb};
-
   #debug_normalize_file($hamfiles, './cache/ham');
   #print "normalizado ham\n";
   #debug_normalize_file($spamfiles, './cache/spam');
   #print "normalizado spam\n";
 
-  #die();
+  if( $kfold ){
+    $self->confidence_level();
+  }
 
-  $self->confidence_level();
-  #print Dumper \%x;
+  return $self;
+}
+
+sub learn_dataset {
+  my ($self, $dont_use_cache) = @_;
+  $dont_use_cache = 0 if(!defined $dont_use_cache);
+
+  my $savefile = '.NaiveBayesSave';
+
+  if(!$dont_use_cache && -e $savefile){
+    $self->{nb} = Algorithm::NaiveBayes->restore_state($savefile);
+  }else{
+    foreach my $filename (keys %{$self->{files}}) {
+      my $word_frequency = word_frequency(
+          file_to_normalized_string($filename)
+        );
+
+      my $type = $self->{files}{$filename};
+      $self->{nb}->add_instance(attributes => $word_frequency, label => $type);
+    }
+    $self->{nb}->train();
+
+    $self->{nb}->save_state($savefile);
+  }
+
+  return undef;
 }
 
 sub confidence_level {
@@ -92,9 +111,12 @@ sub confidence_level {
   # Ciclo de teste
   # my ($ham, $spam) = ();
   my $count = 4;
+
+  # métdo K-fold (Validação cruzada)
   for (my $t = 0; $t < 5; $t++) {
     $self->{nb} = Algorithm::NaiveBayes->new;
 
+    # aprender com 4 blocos
     for (my $b = 0; $b < 5; $b++) {
       if ($b != $count) {
 
@@ -117,18 +139,15 @@ sub confidence_level {
         #print $b, "\n";
       }
     }
-    $self->{nb}->train();
-    #die(Dumper $self->{nb});
-    print "instances: " . $self->{nb}{instances} . "\n";
-    #print "trained\n";
 
+    # preparar naive bayes
+    $self->{nb}->train();
+
+    # testar com o bloco restante
     my $box = $tests[$count];
     my ($guess_correct, $guess_fail) = (0,0);
     foreach my $filename (@$box) {
-      # testa cada email
-
       my $isSPAM = $self->is_spam($filename);
-
       if ( $isSPAM && $self->{files}{$filename} eq 'spam') {
         $guess_correct++;
       } elsif(!$isSPAM && $self->{files}{$filename} eq 'ham'){
@@ -140,7 +159,7 @@ sub confidence_level {
 
     print "Confiabilidade ($count): " .
         ($guess_correct/($guess_correct+$guess_fail)) .
-        "(" . $guess_correct . " em " . ($guess_correct+$guess_fail) . ")\n";
+        " (" . $guess_correct . " em " . ($guess_correct+$guess_fail) . ")\n";
 
     $count--;
   }
@@ -192,6 +211,7 @@ sub file_to_normalized_string {
 
   #remover ainda mais tags HTML (mesmo quando o contenttype nao é html)
   $text =~ s/<(\w+(\b.*?)|\/\w+)>//g;
+  #$text =~ s/<!--.*?-->//g;
 
   # apenas permitir letras e plicas
   $text =~ s/[^a-z']+/ /g;
@@ -211,8 +231,6 @@ sub word_frequency {
 
   my $count = {};
   $count->{$_}++ for(@words);
-
-  #print Dumper \@words, $count;
 
   return $count;
 }
